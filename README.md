@@ -154,6 +154,63 @@ them; accessing them may involve scraping away soldermask) or desoldering and
 resoldering the eMMC IC.
 
 
+## Usage and execution <a id="usage"></a>
+
+Check DevMode:
+```
+luna-send -n 1 -f luna://com.webos.service.devmode/getDevMode '{}'
+```
+
+Install w/ Luna:
+```
+luna-send -i -f luna://com.webos.appInstallService/dev/install '{"id":"lol.downgr8", "ipkUrl":"/tmp/usb/sda/sda1/lol.downgr8_0.0.1_all.ipk", "subscribe":true}'
+```
+
+Launch service:
+```
+luna-send -n 1 -f luna://com.webos.applicationManager/launch '{"id":"lol.downgr8"}'
+```
+<b>- or -</b>
+```
+/media/developer/apps/usr/palm/applications/lol.downgr8/launch.sh
+```
+
+Check the core service is running:
+```
+luna-send -n 1 luna://lol.downgr8.service/fakeusb/getStatus '{}'
+```
+
+Set expert mode:
+```
+luna-send -n 1 'luna://com.webos.service.update/setExpertMode' '{"mode":true}'
+```
+
+Launch update (normal):
+```
+luna-send-pub -d -n 1 -f "luna://com.webos.applicationManager/launch" '{ "id": "com.webos.app.softwareupdate", "params": { "mode": "user", "flagUpdate": true } }'
+```
+Launch update (expert mode 2):
+```
+luna-send -n 1 'luna://com.webos.service.applicationmanager/launch' '{"id":"com.webos.app.softwareupdate", "params":{"mode":"expert", "flagUpdate":true}}'
+```
+
+Removal:
+```
+luna-send -n 1 -f luna://com.webos.appInstallService/dev/remove '{"id":"lol.downgr8"}'
+```
+
+General usage is:
+1. Copy the app to either USB (example commands above assume this) or /tmp.
+2. Install w/ Luna
+3. Launch the service or script - recommend script because more output is available.   
+   This will patch the update and you should see a successful output unless it's either
+   already patched or fails.
+4. Set expert mode to downgrade, check output is successful.   If not, then your service
+   isn't running correctly or the patch failed.
+5. Launch update expert mode 2.   Select the file and attempt downgrade.   
+6. Once complete you can remove the downgr8 package.
+
+
 ## License
 
 This program is free software: you can redistribute it and/or modify it under
