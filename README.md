@@ -69,6 +69,11 @@ The OTAID of a firmware image is displayed when extracting it using
 Homebrew Channel is not strictly necessary as long as you can make sure the
 `lol.downgr8.service` service is running as root.
 
+You will also need to have installed:
+1. <a href-"https://github.com/webosbrew/native-toolchain">Unofficial Native Toolchain for webOS</a>
+   Don't forget to run relocate-sdk.sh.
+2. webOS CLI tools.  May also be able to use NPM packages (npm install -g @webosose/ares-cli),
+   but it's may be older.
 
 ## Details
 
