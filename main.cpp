@@ -20,6 +20,9 @@
 #include <limits.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <cstdint>
+
+#define DEBUG
 
 static const char target[] = "luna://com.webos.service.sm/accessusb/getStatus";
 static const char replacement[] = "luna://" DEFAULT_APP_ID ".service/fakeusb/getStatus";
@@ -37,6 +40,7 @@ static bool overwrite_target(uintptr_t addr);
 int main(int argc, char **argv) {
     if (argc != 2) {
         fprintf(stderr, "usage: %s <pid>\n", argv[0]);
+        fprintf(stderr, "Target: %s\nReplacement: %s\n", target, replacement);
         return EXIT_FAILURE;
     }
 
@@ -59,37 +63,49 @@ int main(int argc, char **argv) {
 
     if ((fp_maps = fopen(path_maps, "r")) == NULL) {
         perror("fopen");
+        fprintf(stderr, "Unable to open /proc/%d/maps\n", pid);
         return EXIT_FAILURE;
     }
 
     /* it's not really necessary to track these separately right now... */
     bool error = false, found = false;
+    int ret;
 
     if ((fp_mem = fopen(path_mem, "r+")) == NULL) {
         perror("fopen");
+        fprintf(stderr, "Unable to open /proc/%d/mem\n", pid);
         error = true;
         goto cleanup_maps;
     }
 
-    int ret = process_maps();
+    ret = process_maps();
 
     if (ret == 1) {
         found = true;
     } else if (ret < 0) {
+        fprintf(stderr, "The process_maps returned %d\n", ret);
         error = true;
+    }
+    else
+    {
+       fprintf(stderr, "The process_maps returned %d\n", ret);
     }
 
     if (fclose(fp_mem) != 0) {
         perror("fclose");
+        fprintf(stderr, "Could not clod fp_mem\n");
         error = true;
     }
 
 cleanup_maps:
     if (fclose(fp_maps) != 0) {
         perror("fclose");
+        fprintf(stderr, "Could not clod fp_maps\n");
         error = true;
     }
 
+    if (error) fprintf(stderr, "Error occurred\n");
+    if (!found) fprintf(stderr, "Process wasn't found\n");
     return (error || !found) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
@@ -112,13 +128,15 @@ static int process_maps(void) {
         uintptr_t start = 0, end = 0;
         char perms[5] = { '\0' };
 
-        int conv = sscanf(line, "%"SCNxPTR"-%"SCNxPTR" %4c %*x %*2x:%*2x %*u %ms", &start, &end, perms, &name);
+        //int conv = sscanf(line, "%"SCNxPTR"-%"SCNxPTR" %4c %*x %*2x:%*2x %*u %ms", &start, &end, perms, &name);
+        int conv = sscanf(line, "%" SCNxPTR "-%" SCNxPTR " %4c %*x %*2x:%*2x %*u %ms", &start, &end, perms, &name);
+
 
         bool name_match = false;
-
         if (name != NULL) {
             name_match = (strcmp(name, "/usr/sbin/update") == 0);
             /* get this out of the way to simplify error handling later */
+            if (name_match) fprintf(stderr, "Process map name: %s\n", name);
             free(name);
             name = NULL;
         }
@@ -160,7 +178,7 @@ static int process_range(uintptr_t start, uintptr_t end) {
     size_t len = end - start;
 
 #ifdef DEBUG
-    printf("%#"PRIxPTR"-%#"PRIxPTR"\n", start, end);
+    printf("%#" PRIxPTR "-%#" PRIxPTR "\n", start, end);
 #endif
 
     /* don't bother trying to read a length of 0 */
@@ -181,6 +199,14 @@ static int process_range(uintptr_t start, uintptr_t end) {
     }
 
     size_t bytes_read = fread(buf, 1, len, fp_mem);
+    /*
+    fprintf(stderr, "Buffer (bytes: %d): ", bytes_read);
+    for (size_t i = 0; i < bytes_read; i++)
+    {
+       fprintf(stderr, "%c", ((char *)buf)[i]);
+    }
+    fprintf(stderr, "\n");
+    */
 
     if (bytes_read != len) {
         if (feof(fp_mem) != 0) {
@@ -204,7 +230,7 @@ static int process_range(uintptr_t start, uintptr_t end) {
         assert(diff >= 0);
 
         uintptr_t offset = start + diff;
-        printf("found diff %#08"PRIxPTR"; final offset %#08"PRIxPTR"\n", (uintptr_t) diff, offset);
+        printf("found diff %#08" PRIxPTR "; final offset %#08" PRIxPTR "\n", (uintptr_t) diff, offset);
 
         /* either successfully overwritten or error */
         return overwrite_target(offset) ? 1 : -1;
@@ -223,8 +249,11 @@ static ptrdiff_t find_target(const void *buf, size_t len) {
     if (addr != NULL) {
         assert(addr >= buf);
 
-        return addr - buf;
+        //return addr - buf;
+        fprintf(stderr, "Target Diff: %d\n", (int)addr - (int)buf);
+        return reinterpret_cast<uint32_t>(addr) - reinterpret_cast<ptrdiff_t>(buf);
     } else {
+        fprintf(stderr, "Address was null\n");
         return -1;
     }
 }

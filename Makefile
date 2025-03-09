@@ -26,9 +26,12 @@ IPK:=$(APP_ID)_$(VERSION)_all.ipk
 CROSS_COMPILE:=/opt/arm-webos-linux-gnueabi_sdk-buildroot/bin/arm-webos-linux-gnueabi-
 CC=$(CROSS_COMPILE)gcc
 
-CFLAGS:=-pipe -std=gnu17 -Wall -Wextra -Og -ggdb -feliminate-unused-debug-types \
+CFLAGS:=-pipe -std=gnu++17 -Wall -Wextra -Og -ggdb -feliminate-unused-debug-types \
 	    -fdebug-prefix-map='$(dir $(PWD))=' -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 \
-		-DDEFAULT_APP_ID='"$(APP_ID)"'
+		-DDEFAULT_APP_ID='"$(APP_ID)"' \
+		--sysroot=/opt/arm-webos-linux-gnueabi_sdk-buildroot/arm-webos-linux-gnueabi/sysroot 
+#		-I/opt/arm-webos-linux-gnueabi_sdk-buildroot/arm-webos-linux-gnueabi/sysroot/usr/include/ \
+#		-L/opt/arm-webos-linux-gnueabi_sdk-buildroot/arm-webos-linux-gnueabi/sysroot/usr/lib/ 
 
 # The LG toolchain uses these. -O1 and --hash-style=gnu are probably useless
 # here but not harmful.
@@ -41,7 +44,7 @@ LIBS:=-lPmLogLib -lglib-2.0 -lpbnjson_c -lluna-service2
 PATCH_BIN:=patch
 
 # source files to link into patch binary
-PATCH_SRCS:=main.c
+PATCH_SRCS:=main.cpp
 
 .PHONY: all
 all: $(IPK)
@@ -58,7 +61,8 @@ $(APP_DIR)/%.json $(SVC_DIR)/%.json: %.json.in Makefile | $(APP_DIR) $(SVC_DIR)
 
 $(APP_DIR)/% $(SVC_DIR)/%: % | $(APP_DIR) $(SVC_DIR)
 	mkdir -p -- '$(dir $@)'
-	cp -t '$(dir $@)' -- '$<'
+	cp '$<' '$(dir $@)'
+	#cp -t '$(dir $@)' -- '$<'
 
 $(IPK): $(addprefix $(APP_DIR)/,$(APP_FILES)) $(addprefix $(SVC_DIR)/,$(SVC_FILES)) | $(APP_DIR) $(SVC_DIR)
 	ares-package '$(APP_DIR)' '$(SVC_DIR)'
